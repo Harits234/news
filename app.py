@@ -6,7 +6,7 @@ from textblob import TextBlob
 
 API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"
 
-# --- Keyword Dampak ---
+# Keyword untuk mendeteksi dampak berita
 impact_keywords = {
     "forex": ["usd", "eur", "inflation", "interest rate", "federal reserve", "ecb", "bank of japan", "forex", "currency", "yield"],
     "crypto": ["bitcoin", "ethereum", "crypto", "blockchain", "binance", "coinbase", "token", "web3", "defi"],
@@ -49,82 +49,99 @@ def format_time(iso_time):
     local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(pytz.timezone("Asia/Jakarta"))
     return local_dt.strftime("%d %b %Y %H:%M WIB")
 
-# UI Dark Mode Premium
+# Page config
 st.set_page_config(page_title="📰 Market News AI", layout="wide")
 
+# Custom CSS + Background Animation
 st.markdown("""
-    <style>
-    body {
-        background-color: #121212;
-        color: #f0f0f0;
-    }
-    .main-title {
-        font-size: 40px;
-        font-weight: 800;
-        color: #ffffff;
-        margin-bottom: 0.2em;
-    }
-    .subtitle {
-        font-size: 18px;
-        color: #aaaaaa;
-        margin-bottom: 1.5em;
-    }
-    .news-card {
-        background: #1e1e1e;
-        padding: 20px;
-        margin-bottom: 15px;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(255,255,255,0.05);
-        transition: all 0.2s ease-in-out;
-    }
-    .news-card:hover {
-        background: #272727;
-    }
-    .news-title {
-        font-size: 20px;
-        font-weight: bold;
-        color: #ffffff;
-    }
-    .news-meta {
-        font-size: 13px;
-        color: #888888;
-        margin-bottom: 5px;
-    }
-    .impact-badge, .sentiment-badge {
-        display: inline-block;
-        background: #007bff;
-        color: white;
-        padding: 3px 10px;
-        font-size: 12px;
-        border-radius: 999px;
-        margin-right: 5px;
-    }
-    .sentiment-badge {
-        background: #28a745;
-    }
-    .read-more {
-        font-size: 14px;
-        color: #1fa7ff;
-        text-decoration: none;
-    }
-    .read-more:hover {
-        text-decoration: underline;
-    }
-    </style>
+<style>
+body {
+    background-color: #f4f6f8;
+    color: #222222;
+}
+.main-title {
+    font-size: 40px;
+    font-weight: 800;
+    color: #222222;
+    margin-bottom: 0.2em;
+}
+.subtitle {
+    font-size: 18px;
+    color: #555555;
+    margin-bottom: 1.5em;
+}
+.news-card {
+    background: #ffffff;
+    padding: 20px;
+    margin-bottom: 15px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+.news-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #000000;
+}
+.news-meta {
+    font-size: 13px;
+    color: #666666;
+    margin-bottom: 5px;
+}
+.impact-badge, .sentiment-badge {
+    display: inline-block;
+    background: #007bff;
+    color: white;
+    padding: 3px 10px;
+    font-size: 12px;
+    border-radius: 999px;
+    margin-right: 5px;
+}
+.sentiment-badge {
+    background: #28a745;
+}
+.read-more {
+    font-size: 14px;
+    color: #1fa7ff;
+    text-decoration: none;
+}
+.read-more:hover {
+    text-decoration: underline;
+}
+</style>
+
+<!-- Animation: Particles.js -->
+<div id="particles-js" style="position: fixed; width: 100%; height: 100%; z-index: -1;"></div>
+<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+<script>
+particlesJS("particles-js", {
+  "particles": {
+    "number": {"value": 60},
+    "color": {"value": "#007bff"},
+    "shape": {"type": "circle"},
+    "opacity": {"value": 0.2},
+    "size": {"value": 4},
+    "line_linked": {"enable": true,"distance": 100,"color": "#007bff","opacity": 0.2,"width": 1},
+    "move": {"enable": true,"speed": 2}
+  },
+  "interactivity": {"detect_on": "canvas","events": {"onhover": {"enable": true,"mode": "grab"}}}
+});
+</script>
 """, unsafe_allow_html=True)
 
+# Header
 st.markdown('<div class="main-title">📰 Real-Time Market News</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Update berita terbaru dilengkapi analisa dampak & sentimen AI untuk trader Forex, Crypto, dan Saham.</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Pantau berita terbaru dengan AI Sentiment dan Dampak Market. Powered by NewsAPI & TextBlob.</div>', unsafe_allow_html=True)
 
+# Pilihan kategori
 category_map = {
     "📈 Forex / Saham": "business",
     "💻 Teknologi": "technology",
     "🪙 Crypto": "general",
 }
-
 selected = st.selectbox("📊 Pilih kategori berita:", list(category_map.keys()))
 selected_category = category_map[selected]
 
+# Button ambil berita
 if st.button("🔄 Muat Berita Terbaru"):
     with st.spinner("Mengambil dan menganalisis berita..."):
         news = get_newsapi_data(selected_category)
