@@ -1,6 +1,5 @@
 streamlit
 requests
-textblob
-pytz
+beautifulsoup4
 pandas
 plotly
