@@ -3,10 +3,11 @@ import requests
 from textblob import TextBlob
 from datetime import datetime
 import pytz
+import pandas as pd
 from collections import Counter
 import plotly.express as px
 
-# ------------------------- SETTING -------------------------
+# ------------------------- SETUP UI -------------------------
 st.set_page_config(page_title="Real-Time Market News", layout="wide")
 
 st.markdown("""
@@ -17,7 +18,7 @@ st.markdown("""
             font-family: 'Segoe UI', sans-serif;
         }
         .news-card {
-            background: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.95);
             border-radius: 15px;
             padding: 20px;
             margin: 10px 0;
@@ -61,7 +62,7 @@ st.markdown("""
     <div class="animated-bg">
 """, unsafe_allow_html=True)
 
-# ------------------------- FUNGSIONAL -------------------------
+# ------------------------- API & ANALYTICS -------------------------
 API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"
 
 def get_newsapi_data():
@@ -94,11 +95,11 @@ def analyze_sentiment(text):
 
 def detect_impact(text):
     impact = []
-    if any(keyword in text.lower() for keyword in ['fed', 'usd', 'eur', 'jpy', 'interest', 'rates', 'inflation']):
+    if any(k in text.lower() for k in ['fed', 'usd', 'eur', 'jpy', 'interest', 'rates', 'inflation']):
         impact.append("💱 Forex")
-    if any(keyword in text.lower() for keyword in ['bitcoin', 'crypto', 'ethereum', 'blockchain']):
+    if any(k in text.lower() for k in ['bitcoin', 'crypto', 'ethereum', 'blockchain']):
         impact.append("🪙 Crypto")
-    if any(keyword in text.lower() for keyword in ['stocks', 'nasdaq', 's&p', 'dow', 'tesla', 'apple']):
+    if any(k in text.lower() for k in ['stocks', 'nasdaq', 's&p', 'dow', 'tesla', 'apple']):
         impact.append("📈 Saham")
     return impact if impact else ["❓ Tidak Diketahui"]
 
@@ -110,7 +111,7 @@ def format_time(t):
     except:
         return t
 
-# ------------------------- UI -------------------------
+# ------------------------- MAIN CONTENT -------------------------
 st.title("📰 Real-Time Market News")
 st.markdown("Pantau berita **Forex, Crypto, dan Saham** secara real-time dari berbagai sumber terpercaya.")
 st.divider()
@@ -138,11 +139,11 @@ if news:
 
     # 📊 Grafik Dampak Harian
     st.markdown("### 📊 Dampak Berita Hari Ini")
-    data = {
+    df_impact = pd.DataFrame({
         "Market": list(impact_counter.keys()),
         "Jumlah Berita": list(impact_counter.values())
-    }
-    fig = px.bar(data, x="Market", y="Jumlah Berita", color="Market",
+    })
+    fig = px.bar(df_impact, x="Market", y="Jumlah Berita", color="Market",
                  color_discrete_sequence=px.colors.qualitative.Pastel,
                  title="Jumlah Berita yang Berdampak ke Market Hari Ini")
     fig.update_layout(paper_bgcolor="white", plot_bgcolor="white")
