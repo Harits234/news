@@ -1,146 +1,138 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import plotly.express as px
 import pandas as pd
-import random
+import plotly.express as px
+from datetime import datetime
 
-# ------------------ CONFIG ------------------ #
-st.set_page_config(page_title="📰 Real-Time Market News", layout="wide")
+# ============================
+# Konfigurasi Awal
+# ============================
+st.set_page_config(page_title="📈 Real-Time Market News", layout="wide")
+st.markdown("""
+    <style>
+        .reportview-container {
+            background: linear-gradient(to right, #ffffff, #f4f6f8);
+        }
+        .css-1d391kg { background-color: transparent; }
+        .css-ffhzg2 { font-family: 'Segoe UI', sans-serif; }
+        .stSlider > div { padding-bottom: 20px; }
+    </style>
+""", unsafe_allow_html=True)
 
-# ------------------ STYLING ------------------ #
-light_mode_css = """
-<style>
-body {
-    background-color: white;
-    color: black;
-}
-.news-card {
-    background-color: #f8f9fa;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    transition: 0.3s;
-}
-.news-card:hover {
-    transform: scale(1.01);
-}
-</style>
-"""
-
-dark_mode_css = """
-<style>
-body {
-    background-color: #0e1117;
-    color: white;
-}
-.news-card {
-    background-color: #1c1e26;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 6px rgba(255,255,255,0.05);
-    transition: 0.3s;
-}
-.news-card:hover {
-    transform: scale(1.01);
-}
-</style>
-"""
-
-# Toggle Theme
-mode = st.sidebar.radio("🎨 Theme Mode", ["Light", "Dark"])
-if mode == "Light":
-    st.markdown(light_mode_css, unsafe_allow_html=True)
-else:
-    st.markdown(dark_mode_css, unsafe_allow_html=True)
-
-# ------------------ HEADER ------------------ #
-st.title("📰 Real-Time Market News")
-st.markdown("Pantau berita Forex, Saham, dan Crypto terbaru dari berbagai sumber terpercaya.")
-st.divider()
-
-# ------------------ INPUT ------------------ #
-kategori = st.selectbox("📊 Pilih kategori berita:", ["Semua", "Forex", "Crypto", "Saham"])
-search_query = st.text_input("🔍 Cari berita berdasarkan keyword:")
-
-if st.button("🔄 Refresh Berita"):
-    st.experimental_rerun()
-
-# ------------------ FETCH DATA ------------------ #
+# ============================
+# API Configuration
+# ============================
 API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"
+BASE_URL = "https://newsapi.org/v2/everything"
 
-@st.cache_data(show_spinner=False)
-def get_newsapi_data():
-    url = f"https://newsapi.org/v2/top-headlines?language=en&pageSize=100&apiKey={API_KEY}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        articles = response.json()["articles"]
-        return articles
-    else:
-        return []
+# ============================
+# Fungsi Ambil Berita
+# ============================
+def fetch_news(query="forex", page=1):
+    try:
+        params = {
+            "q": query,
+            "language": "en",
+            "pageSize": 10,
+            "page": page,
+            "apiKey": API_KEY
+        }
+        response = requests.get(BASE_URL, params=params)
+        data = response.json()
+        return data.get("articles", []), data.get("totalResults", 0)
+    except:
+        return [], 0
 
-news = get_newsapi_data()
+# ============================
+# Fungsi Dampak Berita (dummy logic)
+# ============================
+def calculate_impact(articles):
+    impact = {"Forex": 0, "Crypto": 0, "Saham": 0}
+    for article in articles:
+        title = article["title"].lower()
+        if "forex" in title or "currency" in title:
+            impact["Forex"] += 1
+        elif "crypto" in title or "bitcoin" in title:
+            impact["Crypto"] += 1
+        elif "stock" in title or "equity" in title:
+            impact["Saham"] += 1
+    return impact
 
-# ------------------ FUNCTION ------------------ #
-def detect_impact(title):
-    title = title.lower()
-    impacts = []
-    if any(word in title for word in ["dollar", "eur", "usd", "inflation", "interest"]):
-        impacts.append("Forex")
-    if any(word in title for word in ["bitcoin", "crypto", "ethereum", "bnb"]):
-        impacts.append("Crypto")
-    if any(word in title for word in ["stock", "shares", "nasdaq", "s&p", "dow"]):
-        impacts.append("Saham")
-    return impacts if impacts else ["Umum"]
+# ============================
+# UI Sidebar
+# ============================
+st.sidebar.title("📂 Opsi Berita")
+category = st.sidebar.selectbox("Pilih kategori", ["Semua", "Forex", "Crypto", "Saham"])
+search_keyword = st.sidebar.text_input("🔍 Cari berita", value="")
+refresh = st.sidebar.button("🔄 Refresh Berita")
+dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=False)
 
-# ------------------ FILTER, SEARCH, PAGINATION ------------------ #
-filtered_news = []
-for item in news:
-    impact = detect_impact(item['title'])
-    item['impact'] = impact
-    
-    # Kategori filter
-    if kategori != "Semua" and kategori not in impact:
-        continue
-    
-    # Search keyword
-    if search_query and search_query.lower() not in item['title'].lower():
-        continue
+if dark_mode:
+    st.markdown("""
+        <style>
+            body, .reportview-container {
+                background-color: #1e1e1e;
+                color: #ffffff;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-    filtered_news.append(item)
+# ============================
+# Proses Keyword
+# ============================
+query_map = {
+    "Semua": "markets",
+    "Forex": "forex",
+    "Crypto": "crypto",
+    "Saham": "stock market"
+}
 
-# Pagination
-items_per_page = 5
-total_pages = (len(filtered_news) - 1) // items_per_page + 1
-page = st.slider("📑 Halaman", 1, total_pages, 1)
-start_idx = (page - 1) * items_per_page
-end_idx = start_idx + items_per_page
+query = query_map.get(category, "markets")
+if search_keyword:
+    query += f" {search_keyword}"
 
-# ------------------ DISPLAY NEWS ------------------ #
-if filtered_news:
-    for item in filtered_news[start_idx:end_idx]:
-        st.markdown(f"""
-            <div class='news-card'>
-            <h4>{item['title']}</h4>
-            <p><b>Source:</b> {item['source']['name']} | <b>Impact:</b> {', '.join(item['impact'])}</p>
-            <p>{item['description'] or ''}</p>
-            <a href="{item['url']}" target="_blank">🔗 Baca Selengkapnya</a>
-            </div>
-        """, unsafe_allow_html=True)
+# ============================
+# Ambil dan Tampilkan Berita
+# ============================
+st.title("📰 Real-Time Market News")
+st.markdown("Pantau berita **Forex**, **Crypto**, dan **Saham** dari berbagai sumber terpercaya.")
+
+news, total = fetch_news(query=query)
+
+if not news:
+    st.error("❌ Gagal mengambil berita. Coba lagi nanti.")
 else:
-    st.warning("❌ Gagal mengambil berita atau tidak ditemukan.")
+    total_pages = (total // 10) + 1
+    if total_pages > 1:
+        page = st.slider("📑 Halaman", 1, total_pages, 1)
+        news, _ = fetch_news(query=query, page=page)
+    else:
+        page = 1
 
-# ------------------ GRAFIK ------------------ #
-impact_data = [imp for item in filtered_news for imp in item['impact']]
-if impact_data:
-    df = pd.DataFrame(impact_data, columns=["Market"])
-    data = df.value_counts().reset_index()
-    data.columns = ["Market", "Jumlah Berita"]
+    for article in news:
+        with st.container():
+            st.subheader(article['title'])
+            st.write(f"📅 {article['publishedAt'][:10]} | 📰 {article['source']['name']}")
+            st.write(article['description'])
+            st.markdown(f"[Baca Selengkapnya]({article['url']})")
+            st.markdown("---")
+
+    # ============================
+    # Grafik Dampak Harian
+    # ============================
+    impact = calculate_impact(news)
+    data = pd.DataFrame({
+        "Market": list(impact.keys()),
+        "Jumlah Berita": list(impact.values())
+    })
     fig = px.bar(data, x="Market", y="Jumlah Berita", color="Market",
                  color_discrete_sequence=px.colors.qualitative.Pastel,
-                 title="Jumlah Berita yang Berdampak ke Market Hari Ini")
+                 title="📊 Dampak Berita Hari Ini")
     st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("📉 Tidak ada data dampak berita untuk ditampilkan.")
+
+# ============================
+# Footer
+# ============================
+st.markdown("---")
+st.caption("Dibuat oleh Muhammad Harits Syahdan · Powered by NewsAPI.org")
