@@ -1,14 +1,14 @@
 import streamlit as st
-import plotly.graph_objs as go
-import websocket
-import json
-import threading
-import time
 import requests
+import plotly.graph_objs as go
+import time
 
+# ==================== CONFIG =======================
 st.set_page_config(layout="wide", page_title="FiatLeak Real-Time", page_icon="🌍")
 
-# ===== Styling ala FiatLeak ====
+API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"  # <<< GANTI INI YA
+
+# ==================== CSS FIATLEAK ==================
 st.markdown("""
 <style>
 body, .stApp {
@@ -29,11 +29,11 @@ body, .stApp {
 </style>
 """, unsafe_allow_html=True)
 
+# ==================== HEADER + BUBBLE ===============
 st.markdown("<div class='big'>🌍 FiatLeak Style Real-Time Chart + News</div>", unsafe_allow_html=True)
 
-# ===== Bubble animasi ====
 st.components.v1.html("""
-<div style="height:250px;position:relative;overflow:hidden">
+<div style="height:200px;position:relative;overflow:hidden">
 <script>
 setInterval(()=>{
   const b = document.createElement('div');
@@ -53,60 +53,43 @@ setInterval(()=>{
 <style>@keyframes u{0%{transform:translateY(0);}100%{transform:translateY(-500px);opacity:0;}}</style>
 <div id="bub" style="width:100%;height:100%;position:absolute;"></div>
 </div>
-""", height=250)
+""", height=200)
 
-# ======= User pilih pair =======
+# ==================== PAIR SELECT ====================
 pair = st.selectbox("Pilih Pair:", ["frxXAUUSD", "frxEURUSD", "frxUSDJPY", "R_100"])
+chart_placeholder = st.empty()
+price_placeholder = st.empty()
 
-# ====== Tempat tampil data ======
-price_box = st.empty()
-chart_box = st.empty()
+# ==================== CHART LOOP =====================
+prices = []
 
-price_data = []
+for i in range(300):  # Loop maksimal 5 menit (1 detik per update)
+    try:
+        res = requests.get(f"https://api.deriv.com/api/tick/{pair}")
+        price = res.json()["tick"]["quote"]
+        prices.append(price)
+        if len(prices) > 50:
+            prices = prices[-50:]
 
-# ====== WebSocket Handler ======
-def on_message(ws, message):
-    global price_data
-    data = json.loads(message)
-    if "tick" in data:
-        price = data["tick"]["quote"]
-        price_data.append(price)
-        if len(price_data) > 50:
-            price_data = price_data[-50:]
-
-        # Update Streamlit
-        price_box.metric(f"Harga {pair}", f"{price:.2f}")
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(y=price_data, mode="lines+markers", name=pair))
+        fig = go.Figure(go.Scatter(y=prices, mode="lines+markers", name=pair))
         fig.update_layout(template="plotly_dark", height=300, margin=dict(l=20, r=20, t=30, b=20))
-        chart_box.plotly_chart(fig, use_container_width=True)
 
-def on_open(ws):
-    ws.send(json.dumps({"ticks": pair}))
+        price_placeholder.metric(f"Harga {pair}", f"{price:.2f}")
+        chart_placeholder.plotly_chart(fig, use_container_width=True)
 
-def run_ws():
-    ws = websocket.WebSocketApp(
-        "wss://ws.derivws.com/websockets/v3?app_id=1089",
-        on_message=on_message,
-        on_open=on_open
-    )
-    ws.run_forever()
+        time.sleep(1)
 
-# Jalankan WebSocket cuma sekali
-if 'ws_started' not in st.session_state:
-    st.session_state.ws_started = True
-    threading.Thread(target=run_ws, daemon=True).start()
+    except:
+        st.error("⚠️ Gagal ambil data. Coba refresh atau ganti pair.")
+        break
 
-# ======== News Bagian =========
+# =================== NEWS SECTION ====================
 st.markdown("### 📰 Berita Forex & Crypto")
-API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"
-
 def fetch_news():
     try:
         url = f"https://newsapi.org/v2/everything?q=forex+OR+crypto&sortBy=publishedAt&language=en&pageSize=5&apiKey={API_KEY}"
         res = requests.get(url)
-        articles = res.json().get("articles", [])
-        return articles
+        return res.json().get("articles", [])
     except:
         return []
 
