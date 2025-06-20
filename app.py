@@ -1,51 +1,102 @@
 import streamlit as st
 import requests
+from bs4 import BeautifulSoup
 from textblob import TextBlob
-from datetime import datetime
 
-st.set_page_config(page_title="Berita Harian Otomatis", layout="wide")
+st.set_page_config(page_title="Berita Otomatis AI", layout="wide")
+st.title("📰 AI Scraper Multi-Sumber Berita Indonesia")
 
-NEWS_API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"
+keyword = st.text_input("🔍 Kata kunci berita yang dicari:", "ekonomi")
+max_berita = st.slider("Jumlah berita per sumber:", 1, 10, 5)
 
-def get_daily_news(keyword="indonesia", language="id"):
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    url = f"https://newsapi.org/v2/everything?q={keyword}&from={today}&language={language}&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json().get("articles", [])
-    else:
-        return []
+def clean_text(text):
+    return ' '.join(text.strip().split())
 
-def summarize_text(text):
+def summarize(text):
     blob = TextBlob(text)
-    summary = ". ".join(blob.sentences[:2])
-    sentiment = blob.sentiment.polarity
-    return summary, sentiment
+    return ". ".join(blob.sentences[:2])
 
-st.title("📰 Berita Otomatis Terbaru Hari Ini")
-st.markdown("Update otomatis setiap dibuka. Tanpa klik, tanpa ribet.")
+def scrape_kompas(keyword, max_items):
+    url = f"https://www.kompas.com/tag/{keyword}"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, "html.parser")
+    articles = soup.find_all("article", limit=max_items)
+    results = []
+    for art in articles:
+        try:
+            a = art.find("a")
+            title = clean_text(a.get_text())
+            link = a["href"]
+            page = requests.get(link)
+            page_soup = BeautifulSoup(page.text, "html.parser")
+            content = " ".join(p.get_text() for p in page_soup.find_all("p") if len(p.get_text()) > 50)
+            summary = summarize(content)
+            results.append({"title": title, "link": link, "summary": summary})
+        except:
+            continue
+    return results
 
-# Pilih topik berita
-keyword = st.selectbox("Topik berita hari ini:", ["politik", "ekonomi", "teknologi", "internasional", "kripto"])
-max_articles = st.slider("Jumlah berita ditampilkan", 1, 10, 5)
+def scrape_cnbc(keyword, max_items):
+    url = "https://www.cnbcindonesia.com/news"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, "html.parser")
+    articles = soup.find_all("article", limit=20)
+    results = []
+    count = 0
+    for art in articles:
+        try:
+            a = art.find("a")
+            title = clean_text(a.get_text())
+            link = a["href"]
+            if keyword.lower() in title.lower() and count < max_items:
+                page = requests.get(link)
+                page_soup = BeautifulSoup(page.text, "html.parser")
+                content = " ".join(p.get_text() for p in page_soup.find_all("p") if len(p.get_text()) > 50)
+                summary = summarize(content)
+                results.append({"title": title, "link": link, "summary": summary})
+                count += 1
+        except:
+            continue
+    return results
 
-# Ambil berita otomatis saat halaman dibuka
-articles = get_daily_news(keyword)
+def scrape_detik(keyword, max_items):
+    url = f"https://news.detik.com/indeks?tag={keyword}"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, "html.parser")
+    links = soup.select("article a[href^='https']")
+    results = []
+    for a in links[:max_items]:
+        try:
+            link = a["href"]
+            title = clean_text(a.get_text())
+            page = requests.get(link)
+            page_soup = BeautifulSoup(page.text, "html.parser")
+            paragraphs = page_soup.find_all("p")
+            content = " ".join(p.get_text() for p in paragraphs if len(p.get_text()) > 50)
+            summary = summarize(content)
+            results.append({"title": title, "link": link, "summary": summary})
+        except:
+            continue
+    return results
 
-if not articles:
-    st.error("Gagal mengambil berita. Coba ganti kata kunci atau periksa API key.")
-else:
-    for i, article in enumerate(articles[:max_articles]):
-        st.markdown(f"### {i+1}. {article['title']}")
-        st.markdown(f"**Sumber:** {article['source']['name']} | **Tanggal:** {datetime.strptime(article['publishedAt'], '%Y-%m-%dT%H:%M:%SZ').strftime('%d %b %Y %H:%M')}")
-        st.image(article.get("urlToImage", ""), width=600)
-        st.markdown(f"*{article['description']}*")
+if keyword:
+    st.subheader("📡 Kompas")
+    for item in scrape_kompas(keyword, max_berita):
+        st.markdown(f"### {item['title']}")
+        st.write(item['summary'])
+        st.markdown(f"[Baca Selengkapnya]({item['link']})")
+        st.markdown("---")
 
-        if article["content"]:
-            summary, sentiment = summarize_text(article["content"])
-            st.markdown("**📄 Ringkasan AI:**")
-            st.write(summary)
-            st.markdown(f"**📊 Sentimen:** {'Positif ✅' if sentiment > 0 else 'Negatif ❌' if sentiment < 0 else 'Netral ⚖️'}")
+    st.subheader("📡 CNBC Indonesia")
+    for item in scrape_cnbc(keyword, max_berita):
+        st.markdown(f"### {item['title']}")
+        st.write(item['summary'])
+        st.markdown(f"[Baca Selengkapnya]({item['link']})")
+        st.markdown("---")
 
-        st.markdown(f"[🔗 Baca Selengkapnya]({article['url']})")
+    st.subheader("📡 Detik")
+    for item in scrape_detik(keyword, max_berita):
+        st.markdown(f"### {item['title']}")
+        st.write(item['summary'])
+        st.markdown(f"[Baca Selengkapnya]({item['link']})")
         st.markdown("---")
