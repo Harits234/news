@@ -2,19 +2,9 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 import streamlit.components.v1 as components
 from newsapi import NewsApiClient
-from transformers import pipeline
 
 # ===================== KONFIGURASI =====================
 NEWS_API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"  # 🔑 Ganti dengan API key dari https://newsapi.org
-
-# ===================== MODEL AI =====================
-@st.cache_resource
-def load_summarizer_translator():
-    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
-    translator = pipeline("translation", model="Helsinki-NLP/opus-mt-en-id")
-    return summarizer, translator
-
-summarizer, translator = load_summarizer_translator()
 
 # ===================== AMBIL BERITA =====================
 def get_news(keyword="gold OR bitcoin"):
@@ -28,13 +18,13 @@ def get_news(keyword="gold OR bitcoin"):
     return all_articles["articles"]
 
 # ===================== SETUP UI =====================
-st.set_page_config(page_title="Market Premium AI", layout="wide")
+st.set_page_config(page_title="Market Premium", layout="wide")
 
 with st.sidebar:
     selected = option_menu(
         "Market Premium",
-        ["📈 Chart Live", "📰 News AI"],
-        icons=["bar-chart", "robot"],
+        ["📈 Chart Live", "📰 News Update"],
+        icons=["bar-chart", "newspaper"],
         default_index=0,
         styles={
             "container": {"padding": "5px", "background-color": "#000022"},
@@ -67,10 +57,10 @@ if selected == "📈 Chart Live":
         """, height=450)
 
 # ===================== HALAMAN BERITA =====================
-elif selected == "📰 News AI":
-    st.title("📰 Berita Ekonomi & Geopolitik (dengan AI Ringkasan & Terjemahan)")
+elif selected == "📰 News Update":
+    st.title("📰 News Feed: Gold, Bitcoin & Geopolitics")
 
-    keyword = st.text_input("🔍 Cari berita:", value="gold OR bitcoin OR war OR inflation OR geopolitics")
+    keyword = st.text_input("🔍 Search News:", value="gold OR bitcoin OR war OR inflation")
     if keyword:
         articles = get_news(keyword)
         for article in articles:
@@ -84,15 +74,7 @@ elif selected == "📰 News AI":
             # Bersihkan deskripsi
             desc = desc.replace("The post", "").split("…")[0].strip()
 
-            # AI Summarizer & Translate
-            try:
-                summary = summarizer(desc, max_length=60, min_length=20, do_sample=False)[0]['summary_text']
-                translation = translator(summary)[0]['translation_text']
-            except:
-                summary = desc
-                translation = desc
-
-            # Tampilkan dalam card
+            # Tampilkan dalam bentuk card thumbnail
             st.markdown(f"""
             <div style="border:1px solid #333;padding:15px;border-radius:10px;margin-bottom:15px;background-color:#1e1e2f;">
                 <div style="display:flex;gap:15px;align-items:center;">
@@ -100,7 +82,7 @@ elif selected == "📰 News AI":
                     <div style="flex:1">
                         <h4 style="margin-bottom:5px;"><a href="{url}" target="_blank" style="text-decoration:none;color:#FFD700;">{title}</a></h4>
                         <p style="font-size:14px;color:#AAAAAA;margin:0;">🕒 {published} • {source}</p>
-                        <p style="font-size:15px;color:#DDDDDD;margin-top:8px;"><b>Ringkasan AI 🇮🇩:</b> {translation}</p>
+                        <p style="font-size:15px;color:#DDDDDD;">{desc}</p>
                     </div>
                 </div>
             </div>
