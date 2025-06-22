@@ -1,6 +1,8 @@
 streamlit
 streamlit-option-menu
 newsapi-python
+transformers
+torch
 pandas
 beautifulsoup4
 requests
