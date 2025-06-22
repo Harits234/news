@@ -6,6 +6,20 @@ from newsapi import NewsApiClient
 # ===================== KONFIGURASI =====================
 NEWS_API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"  # 🔑 Ganti dengan API key dari https://newsapi.org
 
+# ===================== FUNGSI DETEKSI DAMPAK =====================
+def detect_impact(text):
+    text = text.lower()
+    high_keywords = ['rate hike', 'war', 'conflict', 'inflation spike', 'oil surge', 'missile', 'attack', 'sanction', 'federal reserve', 'fomc']
+    medium_keywords = ['inflation', 'geopolitical', 'unrest', 'protest', 'fed meeting', 'banking', 'data release', 'recession', 'interest rate']
+    
+    for word in high_keywords:
+        if word in text:
+            return "🚨 High"
+    for word in medium_keywords:
+        if word in text:
+            return "⚠️ Medium"
+    return "✅ Low"
+
 # ===================== AMBIL BERITA =====================
 def get_news(keyword="gold OR bitcoin"):
     newsapi = NewsApiClient(api_key=NEWS_API_KEY)
@@ -72,7 +86,10 @@ elif selected == "📰 News Update":
             image_url = article.get('urlToImage') or "https://via.placeholder.com/300x200.png?text=No+Image"
 
             # Bersihkan deskripsi
-            desc = desc.replace("The post", "").split("…")[0].strip()
+            desc_clean = desc.replace("The post", "").split("…")[0].strip()
+
+            # Deteksi dampak berita
+            impact = detect_impact(desc + " " + title)
 
             # Tampilkan dalam bentuk card thumbnail
             st.markdown(f"""
@@ -81,8 +98,8 @@ elif selected == "📰 News Update":
                     <img src="{image_url}" width="150" height="100" style="object-fit:cover;border-radius:8px;" />
                     <div style="flex:1">
                         <h4 style="margin-bottom:5px;"><a href="{url}" target="_blank" style="text-decoration:none;color:#FFD700;">{title}</a></h4>
-                        <p style="font-size:14px;color:#AAAAAA;margin:0;">🕒 {published} • {source}</p>
-                        <p style="font-size:15px;color:#DDDDDD;">{desc}</p>
+                        <p style="font-size:14px;color:#AAAAAA;margin:0;">🕒 {published} • {source} • <b style="color:#00FFAA;">{impact} Impact</b></p>
+                        <p style="font-size:15px;color:#DDDDDD;">{desc_clean}</p>
                     </div>
                 </div>
             </div>
