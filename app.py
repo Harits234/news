@@ -32,7 +32,7 @@ def get_news(keyword="gold OR bitcoin"):
     return all_articles["articles"]
 
 # ===================== SETUP UI =====================
-st.set_page_config(page_title="Market Premium", layout="wide")
+st.set_page_config(page_title="TPM NEWS", layout="wide")
 
 with st.sidebar:
     selected = option_menu(
@@ -52,7 +52,7 @@ st.markdown("<style>body{background-color:#0f0f2f;}</style>", unsafe_allow_html=
 
 # ===================== HALAMAN CHART =====================
 if selected == "📈 Chart Live":
-    st.title("📈 Real-Time Chart Emas & Bitcoin")
+    st.title("📈 Real-Time Chart Gold & Bitcoin")
 
     col1, col2 = st.columns(2)
 
