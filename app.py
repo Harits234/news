@@ -4,12 +4,17 @@ import streamlit.components.v1 as components
 from newsapi import NewsApiClient
 
 # Konfigurasi API
-NEWS_API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"
+NEWS_API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"  # Ganti dengan API key kamu dari https://newsapi.org
 
 # Fungsi ambil berita
-def get_news(keyword="emas"):
+def get_news(keyword="gold OR bitcoin"):
     newsapi = NewsApiClient(api_key=NEWS_API_KEY)
-    all_articles = newsapi.get_everything(q=keyword, language="id", sort_by="publishedAt", page_size=10)
+    all_articles = newsapi.get_everything(
+        q=keyword,
+        language="en",  # ✅ FIX: Ubah dari 'id' ke 'en'
+        sort_by="publishedAt",
+        page_size=10
+    )
     return all_articles["articles"]
 
 # Setup UI
@@ -38,14 +43,14 @@ if selected == "📈 Chart Live":
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("🪙 Bitcoin (BTCUSD)")
+        st.subheader("🪙 Bitcoin (BTC/USD)")
         components.html("""
             <iframe src="https://s.tradingview.com/embed-widget/mini-symbol-overview/?symbol=BINANCE:BTCUSDT&width=100%&height=400&locale=en&dateRange=1D&colorTheme=dark&isTransparent=false&autosize=true"
             width="100%" height="400" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
         """, height=400)
 
     with col2:
-        st.subheader("🥇 Emas (XAUUSD)")
+        st.subheader("🥇 Emas (XAU/USD)")
         components.html("""
             <iframe src="https://s.tradingview.com/embed-widget/mini-symbol-overview/?symbol=OANDA:XAUUSD&width=100%&height=400&locale=en&dateRange=1D&colorTheme=dark&isTransparent=false&autosize=true"
             width="100%" height="400" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
@@ -55,7 +60,7 @@ if selected == "📈 Chart Live":
 elif selected == "📰 Berita Terkini":
     st.title("📰 Berita Ekonomi & Kripto Hari Ini")
 
-    keyword = st.text_input("🔍 Cari berita:", value="emas OR bitcoin OR geopolitik")
+    keyword = st.text_input("🔍 Cari berita:", value="gold OR bitcoin OR war OR inflation")
     if keyword:
         articles = get_news(keyword)
         for article in articles:
