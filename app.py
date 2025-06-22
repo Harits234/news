@@ -1,46 +1,67 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
-from textblob import TextBlob
+from streamlit_option_menu import option_menu
+import streamlit.components.v1 as components
+from newsapi import NewsApiClient
 
-st.set_page_config(page_title="Berita Kompas AI", layout="wide")
-st.title("📰 AI Berita Kompas - Otomatis & Terupdate")
+# Konfigurasi API
+NEWS_API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"
 
-keyword = st.text_input("🔍 Kata kunci berita (Contoh: ekonomi, jokowi, bursa)", "ekonomi")
+# Fungsi ambil berita
+def get_news(keyword="emas"):
+    newsapi = NewsApiClient(api_key=NEWS_API_KEY)
+    all_articles = newsapi.get_everything(q=keyword, language="id", sort_by="publishedAt", page_size=10)
+    return all_articles["articles"]
 
-def summarize(text):
-    blob = TextBlob(text)
-    return ". ".join(blob.sentences[:2])
+# Setup UI
+st.set_page_config(page_title="Dashboard Emas & Kripto", layout="wide")
 
-def scrape_kompas(keyword):
-    search_url = f"https://www.kompas.com/search?q={keyword}"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    res = requests.get(search_url, headers=headers)
-    soup = BeautifulSoup(res.text, "html.parser")
-    articles = soup.find_all("div", class_="article__list", limit=5)
-    results = []
+with st.sidebar:
+    selected = option_menu(
+        "Dashboard 1Miliar", 
+        ["📈 Chart Live", "📰 Berita Terkini"], 
+        icons=["bar-chart", "newspaper"],
+        default_index=0,
+        styles={
+            "container": {"padding": "5px", "background-color": "#000022"},
+            "icon": {"color": "#FFD700", "font-size": "20px"},
+            "nav-link": {"color": "#FFFFFF", "font-size": "18px", "text-align": "left"},
+            "nav-link-selected": {"background-color": "#FFD700", "color": "black"},
+        },
+    )
 
-    for art in articles:
-        try:
-            a = art.find("a", class_="article__link")
-            title = a.get_text(strip=True)
-            link = a["href"]
-            article_page = requests.get(link, headers=headers)
-            article_soup = BeautifulSoup(article_page.text, "html.parser")
-            content = " ".join(p.get_text() for p in article_soup.find_all("p") if len(p.get_text()) > 50)
-            if content:
-                summary = summarize(content)
-                results.append({"title": title, "link": link, "summary": summary})
-        except:
-            continue
-    return results
+st.markdown("<style>body{background-color:#0f0f2f;}</style>", unsafe_allow_html=True)
 
-if keyword:
-    news = scrape_kompas(keyword)
-    if not news:
-        st.warning("Berita tidak ditemukan. Coba kata kunci lain.")
-    for item in news:
-        st.subheader(item['title'])
-        st.write(item['summary'])
-        st.markdown(f"[🔗 Baca Selengkapnya]({item['link']})")
-        st.markdown("---")
+# Halaman Chart Live
+if selected == "📈 Chart Live":
+    st.title("📈 Live Chart Emas & Bitcoin (TradingView)")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("🪙 Bitcoin (BTCUSD)")
+        components.html("""
+            <iframe src="https://s.tradingview.com/embed-widget/mini-symbol-overview/?symbol=BINANCE:BTCUSDT&width=100%&height=400&locale=en&dateRange=1D&colorTheme=dark&isTransparent=false&autosize=true"
+            width="100%" height="400" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
+        """, height=400)
+
+    with col2:
+        st.subheader("🥇 Emas (XAUUSD)")
+        components.html("""
+            <iframe src="https://s.tradingview.com/embed-widget/mini-symbol-overview/?symbol=OANDA:XAUUSD&width=100%&height=400&locale=en&dateRange=1D&colorTheme=dark&isTransparent=false&autosize=true"
+            width="100%" height="400" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
+        """, height=400)
+
+# Halaman Berita
+elif selected == "📰 Berita Terkini":
+    st.title("📰 Berita Ekonomi & Kripto Hari Ini")
+
+    keyword = st.text_input("🔍 Cari berita:", value="emas OR bitcoin OR geopolitik")
+    if keyword:
+        articles = get_news(keyword)
+        for article in articles:
+            st.markdown(f"""
+            ### [{article['title']}]({article['url']})
+            ⏱️ {article['publishedAt'][:10]} | 🏷️ {article['source']['name']}  
+            {article['description'] or ''}
+            ---
+            """)
