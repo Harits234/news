@@ -3,10 +3,10 @@ from streamlit_option_menu import option_menu
 import streamlit.components.v1 as components
 from newsapi import NewsApiClient
 
-# Konfigurasi API Key
-NEWS_API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"  # ← Ganti dengan key dari newsapi.org
+# ===================== KONFIGURASI =====================
+NEWS_API_KEY = "fadb8f16daaf4ad3baa0aa710051d8f1"  # 🔑 Ganti dengan API key dari https://newsapi.org
 
-# Fungsi ambil berita dari NewsAPI
+# ===================== AMBIL BERITA =====================
 def get_news(keyword="gold OR bitcoin"):
     newsapi = NewsApiClient(api_key=NEWS_API_KEY)
     all_articles = newsapi.get_everything(
@@ -17,13 +17,13 @@ def get_news(keyword="gold OR bitcoin"):
     )
     return all_articles["articles"]
 
-# Setup halaman utama
-st.set_page_config(page_title="Market Insight Premium", layout="wide")
+# ===================== SETUP UI =====================
+st.set_page_config(page_title="Market Premium", layout="wide")
 
 with st.sidebar:
     selected = option_menu(
-        "Market Insight",
-        ["📊 Chart Live", "📰 News Update"],
+        "Market Premium",
+        ["📈 Chart Live", "📰 News Update"],
         icons=["bar-chart", "newspaper"],
         default_index=0,
         styles={
@@ -36,37 +36,54 @@ with st.sidebar:
 
 st.markdown("<style>body{background-color:#0f0f2f;}</style>", unsafe_allow_html=True)
 
-# === CHART PAGE ===
-if selected == "📊 Chart Live":
-    st.title("📈 Real-Time Market Chart (TradingView)")
+# ===================== HALAMAN CHART =====================
+if selected == "📈 Chart Live":
+    st.title("📈 Real-Time Chart Emas & Bitcoin")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("Bitcoin (BTC/USDT)")
+        st.subheader("🪙 Bitcoin (BTC/USDT)")
         components.html("""
-            <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_f2df5&symbol=BINANCE:BTCUSDT&interval=5&theme=dark&style=1&locale=en&toolbar_bg=rgba(0,0,0,1)&enable_publishing=false&hide_top_toolbar=false&hide_legend=false&save_image=false&studies=[]"
+            <iframe src="https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&interval=5&theme=dark&style=1&locale=en&toolbar_bg=rgba(0,0,0,1)"
             width="100%" height="450" frameborder="0" allowfullscreen></iframe>
         """, height=450)
 
     with col2:
-        st.subheader("Gold (XAU/USD)")
+        st.subheader("🥇 Emas (XAU/USD)")
         components.html("""
-            <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_f2df5&symbol=OANDA:XAUUSD&interval=5&theme=dark&style=1&locale=en&toolbar_bg=rgba(0,0,0,1)&enable_publishing=false&hide_top_toolbar=false&hide_legend=false&save_image=false&studies=[]"
+            <iframe src="https://s.tradingview.com/widgetembed/?symbol=OANDA:XAUUSD&interval=5&theme=dark&style=1&locale=en&toolbar_bg=rgba(0,0,0,1)"
             width="100%" height="450" frameborder="0" allowfullscreen></iframe>
         """, height=450)
 
-# === NEWS PAGE ===
+# ===================== HALAMAN BERITA =====================
 elif selected == "📰 News Update":
     st.title("📰 News Feed: Gold, Bitcoin & Geopolitics")
 
-    keyword = st.text_input("🔍 Search News:", value="gold OR bitcoin OR geopolitics OR war OR inflation")
+    keyword = st.text_input("🔍 Search News:", value="gold OR bitcoin OR war OR inflation")
     if keyword:
         articles = get_news(keyword)
         for article in articles:
+            title = article['title'].strip()
+            url = article['url']
+            published = article['publishedAt'][:10]
+            source = article['source']['name']
+            desc = article.get('description') or '*No description available*'
+            image_url = article.get('urlToImage') or "https://via.placeholder.com/300x200.png?text=No+Image"
+
+            # Bersihkan deskripsi
+            desc = desc.replace("The post", "").split("…")[0].strip()
+
+            # Tampilkan dalam bentuk card thumbnail
             st.markdown(f"""
-            ---
-            ### [{article['title']}]({article['url']})
-            ⏱️ `{article['publishedAt'][:10]} • {article['source']['name']}`  
-            {article['description'] or '*No description available*'}
-            """)
+            <div style="border:1px solid #333;padding:15px;border-radius:10px;margin-bottom:15px;background-color:#1e1e2f;">
+                <div style="display:flex;gap:15px;align-items:center;">
+                    <img src="{image_url}" width="150" height="100" style="object-fit:cover;border-radius:8px;" />
+                    <div style="flex:1">
+                        <h4 style="margin-bottom:5px;"><a href="{url}" target="_blank" style="text-decoration:none;color:#FFD700;">{title}</a></h4>
+                        <p style="font-size:14px;color:#AAAAAA;margin:0;">🕒 {published} • {source}</p>
+                        <p style="font-size:15px;color:#DDDDDD;">{desc}</p>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
